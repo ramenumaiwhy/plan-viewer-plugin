@@ -1,0 +1,14 @@
+{
+  "name": "plan-viewer",
+  "version": "1.0.0",
+  "description": "Plan mode の計画を非エンジニア向け HTML に変換し、スマホで確認できるようにする",
+  "author": {
+    "name": "aiharataketo",
+    "url": "https://github.com/aiharataketo"
+  },
+  "repository": "https://github.com/aiharataketo/plan-viewer-plugin",
+  "license": "MIT",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "commands": ["./commands/setup.md", "./commands/serve.md"]
+}
