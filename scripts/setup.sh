@@ -5,6 +5,11 @@ set -euo pipefail
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="${PLAN_VIEWER_DIR:-$HOME/plan-viewer}"
 
+case "$DEST" in
+  "$HOME"/*) ;;
+  *) echo "Error: PLAN_VIEWER_DIR must be under \$HOME ($DEST)" >&2; exit 1 ;;
+esac
+
 mkdir -p "$DEST"
 
 copied=0
