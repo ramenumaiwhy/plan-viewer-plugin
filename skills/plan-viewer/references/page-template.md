@@ -168,6 +168,39 @@
   .ba-card ul li { margin-bottom: 4px; }
   .ba-card.before ul li::before { content: "✕ "; color: #c63939; }
   .ba-card.after ul li::before { content: "✓ "; color: #34d399; }
+  /* --- Diff Box（変更の Before/After 表示） --- */
+  .diff-box {
+    background: #0f2744;
+    border: 1px solid #2e445c;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 1.5em;
+    font-size: 0.9rem;
+    line-height: 1.8;
+  }
+  .diff-before-label, .diff-after-label {
+    font-weight: bold;
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+  }
+  .diff-before-label { color: #c63939; }
+  .diff-after-label { color: #34d399; margin-top: 16px; }
+  .diff-before-text {
+    background: rgba(198, 57, 57, 0.1);
+    border-left: 3px solid #c63939;
+    padding: 10px 14px;
+    border-radius: 4px;
+    color: #e8a0a0;
+    text-decoration: line-through;
+  }
+  .diff-after-text {
+    background: rgba(52, 211, 153, 0.1);
+    border-left: 3px solid #34d399;
+    padding: 10px 14px;
+    border-radius: 4px;
+    color: #a0e8c8;
+    font-weight: bold;
+  }
   /* --- FAB（右下固定ボタン群） --- */
   .fab-group {
     position: fixed; bottom: 24px; right: 24px; z-index: 100;
@@ -313,6 +346,14 @@
 
   <h2>🏗️ 何をしたのか</h2>
   <!-- Before/After, ステップ, カードなどを使って説明 -->
+  <!-- 変更を伴う plan では diff box を使う:
+  <div class="diff-box">
+    <div class="diff-before-label">BEFORE</div>
+    <div class="diff-before-text">削除される内容をここに</div>
+    <div class="diff-after-label">AFTER</div>
+    <div class="diff-after-text">追加・変更される内容をここに</div>
+  </div>
+  -->
 
   <h2>📊 ステップ / 詳細</h2>
   <!-- 具体的な手順や内容 -->

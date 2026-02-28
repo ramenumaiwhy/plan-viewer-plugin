@@ -30,6 +30,16 @@ description: >-
 - 個別ページ: `YYYY-MM-DD_タイトル.html`（日本語OK）
 - 一覧ページ: `index.html`（新しいエントリを先頭に追加）
 
+### 日時ルール
+- すべての日時は **JST（日本標準時, UTC+9）** で表示する
+- 時刻は必ず含める（日付のみは不可）
+- コンテンツを新規作成・更新した場合、**以下の両方の時刻を必ず更新**すること:
+  1. **index.html**: 該当エントリの `card-meta` 内 `<span>` の日時
+  2. **個別ページ**: `.date` 要素の日時
+- 表示形式:
+  - index.html: `YYYY-MM-DD HH:MM`（例: `2026-02-28 14:30`）
+  - 個別ページ: `YYYY年M月D日 HH:MM 更新`（例: `2026年2月28日 14:30 更新`）
+
 ### コンテンツ構成
 ```
 📌 一言でいうと（30文字以内で本質）
@@ -57,6 +67,11 @@ description: >-
   - ○ 「新しいAPIエンドポイント（受付窓口）を追加する」
   - ✕ 「`app.get('/api/users', ...)` を追加する」
 - 「何がどう変わったか」を Before/After で示す
+- 変更を伴う plan では **diff box** で Before/After を視覚的に示す
+  - 赤背景 + 取り消し線 = 削除される部分
+  - 緑背景 + 太字 = 追加・変更される部分
+  - CSS クラス: `.diff-box`, `.diff-before-label/text`, `.diff-after-label/text`
+  - 詳細は `references/page-template.md` の diff セクション参照
 
 ### 外部リソース禁止
 - CDN、外部CSS、外部JS、Google Fonts は一切使わない
