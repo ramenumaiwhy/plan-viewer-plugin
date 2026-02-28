@@ -1,5 +1,7 @@
 .DS_Store
 __pycache__/
 *.pyc
-questions.json
-plans/
+
+# 記事執筆関連（プラグイン本体ではない）
+drafts/
+images/
