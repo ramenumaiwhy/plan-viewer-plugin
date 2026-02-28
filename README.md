@@ -41,7 +41,7 @@ python3 /path/to/plan-viewer-plugin/scripts/server.py --port 8765
 
 ## デザイン
 
-Zenn（catnose氏設計）のダークテーマに準拠。アイコンは `assets/` に同梱されており、差し替え可能。
+Zenn（catnose氏設計）のダークテーマにインスパイアされたデザイン。アイコンは `assets/` に同梱されており、差し替え可能。
 
 ## ライセンス
 

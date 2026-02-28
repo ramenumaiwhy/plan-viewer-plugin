@@ -4,9 +4,9 @@
   "description": "Plan mode の計画を非エンジニア向け HTML に変換し、スマホで確認できるようにする",
   "author": {
     "name": "aiharataketo",
-    "url": "https://github.com/aiharataketo"
+    "url": "https://github.com/ramenumaiwhy"
   },
-  "repository": "https://github.com/aiharataketo/plan-viewer-plugin",
+  "repository": "https://github.com/ramenumaiwhy/plan-viewer-plugin",
   "license": "MIT",
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",

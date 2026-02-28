@@ -14,7 +14,7 @@ description: >-
 ## 概要
 
 スマホでブラウザ確認するための HTML を生成・保存する。
-デザインは Zenn（catnose氏設計）のダークテーマに準拠。
+デザインは Zenn（catnose氏設計）のダークテーマにインスパイアされたもの。
 
 - **保存先**: `${PLAN_VIEWER_DIR}`（デフォルト `~/plan-viewer/`）
 - **一覧**: `${PLAN_VIEWER_DIR}/index.html`
@@ -37,8 +37,9 @@ description: >-
   1. **index.html**: 該当エントリの `card-meta` 内 `<span>` の日時
   2. **個別ページ**: `.date` 要素の日時
 - 表示形式:
-  - index.html: `YYYY-MM-DD HH:MM`（例: `2026-02-28 14:30`）
+  - index.html: `YYYY-MM-DD HH:MM`（例: `2026-02-28 14:30`）— JSが「◯分前」「◯時間前」「◯日前」に自動変換する
   - 個別ページ: `YYYY年M月D日 HH:MM 更新`（例: `2026年2月28日 14:30 更新`）
+- index.html の相対時刻スクリプトは `references/index-rules.md` に定義。`</body>` 直前に必ず維持すること
 
 ### コンテンツ構成
 ```
@@ -73,6 +74,14 @@ description: >-
   - CSS クラス: `.diff-box`, `.diff-before-label/text`, `.diff-after-label/text`
   - 詳細は `references/page-template.md` の diff セクション参照
 
+### 必須コンポーネント（省略禁止）
+個別ページには以下を**必ず**含めること。`references/page-template.md` の該当部分をそのまま使う:
+1. **FABボタン群**（`.fab-group`）— リロードボタン + アノテーションボタン
+2. **アノテーションUI**（バナー・オーバーレイ・ポップオーバー・トースト）
+3. **JavaScript**（アノテーション操作 + リロード処理）
+
+テンプレートの `</div><!-- .container -->` 以降 `</body>` までの HTML・JS は**一切省略せずそのままコピー**すること。
+
 ### 外部リソース禁止
 - CDN、外部CSS、外部JS、Google Fonts は一切使わない
 - 全てインラインCSS/JSで完結させる
@@ -80,7 +89,7 @@ description: >-
 ## リファレンスファイル
 
 各テンプレートと定義は references/ ディレクトリに分離している。
-HTML生成時に必要なファイルだけを Read ツールで参照すること。
+**個別ページ作成時は `page-template.md` を必ず Read すること**（部分省略の原因になるため記憶に頼らない）。
 
 | ファイル | 用途 | 参照タイミング |
 |---------|------|-------------|

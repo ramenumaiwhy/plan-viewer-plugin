@@ -9,6 +9,26 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/plan-html-gate.sh\""
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "If the file_path targets ~/plan-viewer/*.html (excluding index.html and glossary.html), STOP and verify: Have you Read the SKILL.md (~/plan-viewer-plugin/skills/plan-viewer/SKILL.md) and page-template.md (~/plan-viewer-plugin/skills/plan-viewer/references/page-template.md) in this session BEFORE writing? If not, you MUST cancel this Write, Read both files first, then rewrite the HTML following those rules. Key rules you are likely violating if you haven't read them: (1) technical terms must have parenthetical explanations + glossary links, (2) file/function names need role explanations, (3) no code snippets — concept-level only, (4) structure: 📌summary → 🎯why → 🏗️what → 📊steps → 💡points. If you have already Read both files in this session, proceed with the Write."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "If you are in plan mode AND the file you just wrote is the plan file (the path specified in the plan mode system message), then also generate/update the plan-viewer HTML for this plan using the plan-viewer skill (both the individual page and index.html). When updating, set both timestamps to current JST (index.html card-meta span AND the page .date element). If you wrote any other file, ignore this."
+          }
+        ]
       }
     ]
   }
