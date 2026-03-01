@@ -242,6 +242,9 @@ def main():
     parser.add_argument('--no-pin', action='store_true', help='Disable PIN authentication')
     args = parser.parse_args()
 
+    if os.path.exists(args.dir) and not os.path.isdir(args.dir):
+        print(f'Error: "{args.dir}" exists but is not a directory', file=__import__('sys').stderr)
+        raise SystemExit(1)
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir, exist_ok=True)
         print(f'Created directory: {args.dir}')
