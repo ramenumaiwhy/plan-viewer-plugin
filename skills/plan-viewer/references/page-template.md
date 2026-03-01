@@ -1,5 +1,38 @@
 # 個別ページ HTML テンプレート
 
+## デザインリファレンス（Zenn ダークテーマ準拠）
+
+catnose氏の設計思想（読みやすさ・気持ちよさ・青を基調とした落ち着き）を反映。
+
+### カラーパレット（公式 zenn-content-css 準拠）
+| CSS変数 | 値 | 用途 |
+|---------|-----|------|
+| `--c-bg-base` | `#0d223a` | ページ背景 |
+| `--c-bg-dim` | `#0b2c53` | ハイライト背景 |
+| `--c-bg-card` | `#0f2744` | カード背景 |
+| `--c-bg-code` | `#2e445c` | インラインコード背景 |
+| `--c-text-main` | `#c8d6e5` | 本文テキスト |
+| `--c-text-heading` | `#dee4ed` | 見出しテキスト |
+| `--c-text-subtle` | `#acbcc7` | 補助テキスト |
+| `--c-text-link` | `#3ea8ff` | リンク |
+| `--c-border` | `#2e445c` | 通常ボーダー |
+| `--c-border-emphasis` | `#344c69` | 強調ボーダー |
+| `--c-blue-500` | `#3ea8ff` | アクセントカラー |
+| `--c-blue-600` | `#0f83fd` | アクセント（ホバー） |
+| `--c-success` | `#34d399` | 成功・After |
+| `--c-warning` | `#e5a21a` | 警告 |
+| `--c-error` | `#c63939` | エラー・Before |
+
+### 角丸（Zenn variables.scss 準拠）
+`4px`（インラインコード）→ `7px`（カード・ボタン）→ `10px`（コンテナ）→ `14px`（大カード）
+
+### 見出しサイズ
+h1: 1.7em / h2: 1.5em / h3: 1.3em / h4: 1.1em（すべて `border-bottom: 1px solid var(--c-border)` は h1, h2 のみ）
+
+Sources: [zenn-content-css](https://github.com/zenn-dev/zenn-editor/blob/main/packages/zenn-content-css/src/index.scss) / [variables.scss](https://github.com/zenn-dev/zenn-editor/blob/main/packages/zenn-content-css/src/_variables.scss) / [ダークモード](https://zenn.dev/team_zenn/articles/zenn-darkmode-system)
+
+---
+
 ```html
 <!DOCTYPE html>
 <html lang="ja">
@@ -7,10 +40,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{タイトル}}</title>
-<link rel="icon" href="icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -363,6 +392,7 @@
     <p>{{補足情報}}</p>
   </div>
 </div>
+<!-- ⚠️ 以下は省略禁止 — SKILL.md「必須コンポーネント」参照 -->
 <!-- アノテーション: モードバナー -->
 <div class="ann-mode-banner" id="annBanner">📝 質問モード — テキストを選択してね</div>
 <!-- アノテーション: オーバーレイ（モバイル用） -->

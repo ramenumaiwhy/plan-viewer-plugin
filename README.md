@@ -5,12 +5,7 @@ Claude Code の plan mode で生成した計画を、非エンジニア向け HT
 ## インストール
 
 ```bash
-# 単一セッション
 claude --plugin-dir /path/to/plan-viewer-plugin
-
-# 初回セットアップ（出力ディレクトリにアセットをコピー）
-# Claude Code 内で:
-/plan-viewer:setup
 ```
 
 ## 使い方
@@ -31,7 +26,7 @@ claude --plugin-dir /path/to/plan-viewer-plugin
 python3 /path/to/plan-viewer-plugin/scripts/server.py --port 8765
 ```
 
-ポートやディレクトリは `--port` / `--dir` オプションで変更可能。tailscale 等でネットワークを構成し、スマホからアクセスする。
+ディレクトリが存在しない場合は自動作成される。ポートやディレクトリは `--port` / `--dir` オプションで変更可能。tailscale 等でネットワークを構成し、スマホからアクセスする。
 
 ## 設定
 
@@ -41,7 +36,7 @@ python3 /path/to/plan-viewer-plugin/scripts/server.py --port 8765
 
 ## デザイン
 
-Zenn（catnose氏設計）のダークテーマにインスパイアされたデザイン。アイコンは `assets/` に同梱されており、差し替え可能。
+Zenn（catnose氏設計）のダークテーマにインスパイアされたデザイン。
 
 ## ライセンス
 

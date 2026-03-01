@@ -30,16 +30,74 @@ description: >-
 - 個別ページ: `YYYY-MM-DD_タイトル.html`（日本語OK）
 - 一覧ページ: `index.html`（新しいエントリを先頭に追加）
 
+### index.html 更新ルール
+新しいエントリを `<ul class="plan-list">` の先頭に追加（Zenn風カード形式）:
+```html
+<li>
+  <a href="YYYY-MM-DD_タイトル.html">
+    <div class="emoji-box">{{絵文字}}</div>
+    <div class="card-body">
+      <span class="card-title">{{タイトル}}</span>
+      <div class="card-meta">
+        <span>YYYY-MM-DD HH:MM</span>
+      </div>
+    </div>
+  </a>
+</li>
+```
+
+**絵文字の選び方**（Zennの記事アイコンと同じ運用）:
+- 設計・plan: 📋 📐 🗺️ / 構築・実装: 🏗️ ⚙️ 🔧 / デザイン: 🎨 ✨ 💎
+- 調査・分析: 🔍 📊 🧪 / 修正・改善: 🔄 🛠️ ✅ / インフラ: 🌐 🖥️ ☁️
+
+**相対時刻 + 自動ソートスクリプト**（`</body>` 直前に必ず維持）:
+```html
+<script>
+(function(){
+  var spans = document.querySelectorAll('.card-meta > span:first-child');
+  for(var i=0;i<spans.length;i++){
+    var raw = spans[i].textContent.trim();
+    var m = raw.match(/^(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?$/);
+    if(!m) continue;
+    var dt = new Date(m[1]+'T'+(m[2]||'00:00')+':00+09:00');
+    if(isNaN(dt)) continue;
+    var diff = Date.now() - dt.getTime();
+    var mins = Math.floor(diff/60000);
+    var hours = Math.floor(diff/3600000);
+    var days = Math.floor(diff/86400000);
+    var t;
+    if(mins<1) t='たった今';
+    else if(mins<60) t=mins+'分前';
+    else if(hours<24) t=hours+'時間前';
+    else if(days<30) t=days+'日前';
+    else{ var mo=Math.floor(days/30); t=mo<12?mo+'ヶ月前':Math.floor(days/365)+'年前'; }
+    spans[i].title=raw;
+    spans[i].textContent=t;
+  }
+  var list = document.querySelector('.plan-list');
+  if(list){
+    var items = Array.from(list.querySelectorAll('li'));
+    items.sort(function(a, b){
+      var aT = a.querySelector('.card-meta > span:first-child');
+      var bT = b.querySelector('.card-meta > span:first-child');
+      return (bT&&bT.title||'').localeCompare(aT&&aT.title||'');
+    });
+    items.forEach(function(item){ list.appendChild(item); });
+  }
+})();
+</script>
+```
+
 ### 日時ルール
 - すべての日時は **JST（日本標準時, UTC+9）** で表示する
-- 時刻は必ず含める（日付のみは不可）
+- 時刻は必ず含める（日付のみは不可）— **時刻が無い場合、一覧で最下部に表示される**（自動ソートの仕様）
 - コンテンツを新規作成・更新した場合、**以下の両方の時刻を必ず更新**すること:
   1. **index.html**: 該当エントリの `card-meta` 内 `<span>` の日時
   2. **個別ページ**: `.date` 要素の日時
+- 既存エントリを更新した場合、該当エントリの時刻も現在時刻（JST）に更新すること
 - 表示形式:
   - index.html: `YYYY-MM-DD HH:MM`（例: `2026-02-28 14:30`）— JSが「◯分前」「◯時間前」「◯日前」に自動変換する
   - 個別ページ: `YYYY年M月D日 HH:MM 更新`（例: `2026年2月28日 14:30 更新`）
-- index.html の相対時刻スクリプトは `references/index-rules.md` に定義。`</body>` 直前に必ず維持すること
 
 ### コンテンツ構成
 ```
@@ -74,13 +132,19 @@ description: >-
   - CSS クラス: `.diff-box`, `.diff-before-label/text`, `.diff-after-label/text`
   - 詳細は `references/page-template.md` の diff セクション参照
 
-### 必須コンポーネント（省略禁止）
+### 用語集（glossary.html）
+- ファイル: `${PLAN_VIEWER_DIR}/glossary.html` — 新しい用語は `<dl>` の**アルファベット順**に追加、各用語に `id` 属性をつける（`glossary.html#api` 等）
+- 用語エントリの構造: **ひとことで**（20文字以内）→ **もう少し詳しく**（2-3文）→ **このプロジェクトでは**（該当する場合のみ）
+- HTMLテンプレートは不要 — 既存の `~/plan-viewer/glossary.html` 自体が生きたテンプレートとして機能する
+
+### 必須コンポーネント（省略禁止 — 省略した場合 hook でブロックされる）
 個別ページには以下を**必ず**含めること。`references/page-template.md` の該当部分をそのまま使う:
 1. **FABボタン群**（`.fab-group`）— リロードボタン + アノテーションボタン
 2. **アノテーションUI**（バナー・オーバーレイ・ポップオーバー・トースト）
 3. **JavaScript**（アノテーション操作 + リロード処理）
 
 テンプレートの `</div><!-- .container -->` 以降 `</body>` までの HTML・JS は**一切省略せずそのままコピー**すること。
+**⚠️ FABボタン群とアノテーションUIを省略すると、Write hook でブロックされて再作成が必要になる。**
 
 ### 外部リソース禁止
 - CDN、外部CSS、外部JS、Google Fonts は一切使わない
@@ -88,12 +152,8 @@ description: >-
 
 ## リファレンスファイル
 
-各テンプレートと定義は references/ ディレクトリに分離している。
 **個別ページ作成時は `page-template.md` を必ず Read すること**（部分省略の原因になるため記憶に頼らない）。
 
 | ファイル | 用途 | 参照タイミング |
 |---------|------|-------------|
-| `references/page-template.md` | 個別ページの完全テンプレート | 新規ページ作成時 |
-| `references/glossary-template.md` | 用語集テンプレート + 運用ルール | 用語追加時 |
-| `references/index-rules.md` | index.html 更新ルール + 絵文字ガイド | 一覧更新時 |
-| `references/css-palette.md` | Zenn ダークテーマ カラーパレット | デザイン確認時 |
+| `references/page-template.md` | 個別ページの完全テンプレート + カラーパレット | 新規ページ作成時 |

@@ -243,8 +243,8 @@ def main():
     args = parser.parse_args()
 
     if not os.path.isdir(args.dir):
-        print(f'Error: "{args.dir}" is not a valid directory', file=__import__('sys').stderr)
-        raise SystemExit(1)
+        os.makedirs(args.dir, exist_ok=True)
+        print(f'Created directory: {args.dir}')
 
     pin_hash = None
     auth_token_secret = secrets.token_hex(16)
