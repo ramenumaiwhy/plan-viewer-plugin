@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 
 # 記事執筆関連（プラグイン本体ではない）
+article-draft.md
 drafts/
 images/
 plans/
