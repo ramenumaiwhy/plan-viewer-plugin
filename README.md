@@ -22,11 +22,11 @@ claude --plugin-dir /path/to/plan-viewer-plugin
 # Claude Code 内で:
 /plan-viewer:serve
 
-# または直接:
-python3 /path/to/plan-viewer-plugin/scripts/server.py --port 8765
+# スマホ（同じ WiFi）からアクセスする場合:
+python3 scripts/server.py --port 8765 --host 0.0.0.0
 ```
 
-ディレクトリが存在しない場合は自動作成される。ポートやディレクトリは `--port` / `--dir` オプションで変更可能。tailscale 等でネットワークを構成し、スマホからアクセスする。
+デフォルトは localhost のみ。スマホからアクセスするには `--host 0.0.0.0` が必要（PIN 認証はデフォルトで有効）。ディレクトリが存在しない場合は自動作成される。
 
 ## 設定
 

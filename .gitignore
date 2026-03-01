@@ -5,3 +5,4 @@ __pycache__/
 # 記事執筆関連（プラグイン本体ではない）
 drafts/
 images/
+plans/

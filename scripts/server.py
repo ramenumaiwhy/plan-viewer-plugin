@@ -10,6 +10,7 @@ import sys
 import time
 from collections import defaultdict
 from http import cookies
+from urllib.parse import unquote_plus
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 MAX_BODY = 64 * 1024  # 64 KB
@@ -152,7 +153,7 @@ def make_handler(pin_hash, auth_token_secret):
             submitted_pin = ''
             for pair in body.split('&'):
                 if pair.startswith('pin='):
-                    submitted_pin = pair[4:].strip()
+                    submitted_pin = unquote_plus(pair[4:]).strip()
                     break
 
             submitted_hash = hashlib.sha256(submitted_pin.encode()).hexdigest()
@@ -237,7 +238,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='plan-viewer HTTP server')
     parser.add_argument('--port', type=int, default=8765)
-    parser.add_argument('--host', default='0.0.0.0')
+    parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--dir', default=default_dir)
     parser.add_argument('--pin', default=None, help='PIN code (default: random 4-digit)')
     parser.add_argument('--no-pin', action='store_true', help='Disable PIN authentication')
