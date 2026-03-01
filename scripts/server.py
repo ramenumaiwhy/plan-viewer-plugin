@@ -6,6 +6,7 @@ import hmac
 import json
 import os
 import secrets
+import sys
 import time
 from collections import defaultdict
 from http import cookies
@@ -243,7 +244,7 @@ def main():
     args = parser.parse_args()
 
     if os.path.exists(args.dir) and not os.path.isdir(args.dir):
-        print(f'Error: "{args.dir}" exists but is not a directory', file=__import__('sys').stderr)
+        print(f'Error: "{args.dir}" exists but is not a directory', file=sys.stderr)
         raise SystemExit(1)
     if not os.path.isdir(args.dir):
         os.makedirs(args.dir, exist_ok=True)

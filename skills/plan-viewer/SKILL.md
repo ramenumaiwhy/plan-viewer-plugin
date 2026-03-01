@@ -80,7 +80,8 @@ description: >-
     items.sort(function(a, b){
       var aT = a.querySelector('.card-meta > span:first-child');
       var bT = b.querySelector('.card-meta > span:first-child');
-      return (bT&&bT.title||'').localeCompare(aT&&aT.title||'');
+      var bVal = bT&&bT.title||'', aVal = aT&&aT.title||'';
+      return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
     });
     items.forEach(function(item){ list.appendChild(item); });
   }

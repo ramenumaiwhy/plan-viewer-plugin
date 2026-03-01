@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "If the file_path targets ~/plan-viewer/*.html (excluding index.html and glossary.html), STOP and verify: (1) Have you Read the SKILL.md and page-template.md in this session BEFORE writing? If not, cancel this Write, Read both files first, then rewrite. (2) Does the HTML contain FAB button group (.fab-group), annotation UI (banner, overlay, popover, toast), and all JavaScript? If ANY of these are missing, cancel and rewrite with the complete template. Key rules: technical terms need parenthetical explanations + glossary links, file/function names need role explanations, no code snippets, structure: summary → why → what → steps → points."
+            "prompt": "If the file_path ends with .html and is inside a plan-viewer output directory (typically ~/plan-viewer/ or the value of PLAN_VIEWER_DIR, excluding index.html and glossary.html), STOP and verify: (1) Have you Read the SKILL.md and page-template.md in this session BEFORE writing? If not, cancel this Write, Read both files first, then rewrite. (2) Does the HTML contain FAB button group (.fab-group), annotation UI (banner, overlay, popover, toast), and all JavaScript? If ANY of these are missing, cancel and rewrite with the complete template. Key rules: technical terms need parenthetical explanations + glossary links, file/function names need role explanations, no code snippets, structure: summary → why → what → steps → points."
           }
         ]
       }
