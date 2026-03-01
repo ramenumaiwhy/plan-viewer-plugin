@@ -97,7 +97,7 @@ def make_handler(pin_hash, auth_token_secret):
             if token is None:
                 return False
             expected = hashlib.sha256(f"{auth_token_secret}:{pin_hash}".encode()).hexdigest()
-            return token.value == expected
+            return hmac.compare_digest(token.value, expected)
 
         def do_GET(self):
             if not self._check_auth():
