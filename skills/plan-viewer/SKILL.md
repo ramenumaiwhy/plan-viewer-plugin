@@ -1,12 +1,17 @@
 ---
 name: plan-viewer
 description: >-
-  スマホで確認するためのHTML生成スキル。技術用語は括弧解説＋「なぜ必要か」の補足付きで、
-  技術理解を促進する書き方をする。用語集ページ（glossary.html）で深掘りも可能。
-  plan mode の ExitPlanMode 時に PreToolUse hook で自動発火する他、
-  明示的な指示でも使用する。
-  トリガー: 「plan-viewerで」「plan-viewerにまとめて」「スマホで見れるようにして」
-  「planをHTMLで」「plan-viewer更新して」「スマホで確認したい」
+  Use this skill whenever the user wants to convert plans, technical discussions,
+  or session summaries into mobile-friendly HTML pages that non-engineers can understand.
+  Generates Zenn-style dark theme HTML with term explanations in parentheses, saves to
+  ~/plan-viewer/, and updates the index page. Use this skill when the user mentions
+  plan-viewer, asks to summarize for smartphone viewing, wants to share technical content
+  with non-technical team members, or requests HTML output with term explanations.
+  Trigger on: 「plan-viewerで」「plan-viewerにまとめて」「スマホで見れるようにして」
+  「スマホで確認したい」「planをHTMLで」「非エンジニア向けにまとめて」「HTMLにまとめて保存」
+  「ブラウザで確認できるようにして」「~/plan-viewer/に保存」「Zenn風で」.
+  Also trigger when the user asks to make technical content readable for non-engineers,
+  even without explicitly mentioning plan-viewer.
 ---
 
 # plan-viewer スキル
