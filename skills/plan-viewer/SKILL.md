@@ -10,8 +10,6 @@ description: >-
   Trigger on: 「plan-viewerで」「plan-viewerにまとめて」「スマホで見れるようにして」
   「スマホで確認したい」「planをHTMLで」「非エンジニア向けにまとめて」「HTMLにまとめて保存」
   「ブラウザで確認できるようにして」「~/plan-viewer/に保存」「Zenn風で」.
-  Also trigger when the user asks to make technical content readable for non-engineers,
-  even without explicitly mentioning plan-viewer.
 ---
 
 # plan-viewer スキル
