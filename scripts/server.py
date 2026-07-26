@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""plan-viewer HTTP server with cache-control headers, annotation POST, and optional PIN auth."""
+"""View HTTP server with cache-control headers, annotation POST, and optional PIN auth."""
 import argparse
 import hashlib
 import hmac
@@ -23,7 +23,7 @@ PIN_PAGE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>plan-viewer</title>
+<title>View</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
@@ -46,7 +46,7 @@ PIN_PAGE = """<!DOCTYPE html>
 </head>
 <body>
 <div class="card">
-  <h1>plan-viewer</h1>
+  <h1>View</h1>
   <p>PINコードを入力してください</p>
   <form id="f" method="POST" action="/api/auth">
     <input id="pin" name="pin" type="tel" inputmode="numeric" pattern="[0-9]*"
@@ -236,7 +236,7 @@ def make_handler(pin_hash, auth_token_secret):
 def main():
     default_dir = os.environ.get('PLAN_VIEWER_DIR', os.path.expanduser('~/plan-viewer'))
 
-    parser = argparse.ArgumentParser(description='plan-viewer HTTP server')
+    parser = argparse.ArgumentParser(description='View HTTP server')
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--dir', default=default_dir)

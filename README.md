@@ -1,4 +1,4 @@
-# plan-viewer
+# View
 
 Claude Code の plan mode で生成した計画を、非エンジニア向け HTML に変換してスマホで読めるようにするプラグイン。
 
@@ -20,7 +20,7 @@ claude --plugin-dir /path/to/plan-viewer-plugin
 
 ```bash
 # Claude Code 内で:
-/plan-viewer:serve
+/view:serve
 
 # スマホ（同じ WiFi）からアクセスする場合は Claude Code 内で:
 # 「--host 0.0.0.0 をつけて」と指示する

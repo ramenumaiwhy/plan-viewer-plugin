@@ -1,18 +1,18 @@
 ---
-name: plan-viewer
+name: view
 description: >-
   Use this skill whenever the user wants to convert plans, technical discussions,
   or session summaries into mobile-friendly HTML pages that non-engineers can understand.
   Generates Zenn-style dark theme HTML with term explanations in parentheses, saves to
   ~/plan-viewer/, and updates the index page. Use this skill when the user mentions
-  plan-viewer, asks to summarize for smartphone viewing, wants to share technical content
+  View, asks to summarize for smartphone viewing, wants to share technical content
   with non-technical team members, or requests HTML output with term explanations.
-  Trigger on: 「plan-viewerで」「plan-viewerにまとめて」「スマホで見れるようにして」
+  Trigger on: 「Viewで」「Viewにまとめて」「スマホで見れるようにして」
   「スマホで確認したい」「planをHTMLで」「非エンジニア向けにまとめて」「HTMLにまとめて保存」
   「ブラウザで確認できるようにして」「~/plan-viewer/に保存」「Zenn風で」.
 ---
 
-# plan-viewer スキル
+# View スキル
 
 ## 概要
 
@@ -25,7 +25,7 @@ description: >-
 ## 発火タイミング
 
 1. **自動**: plan mode で ExitPlanMode する前（PreToolUse hook がブロックして促す）
-2. **手動**: ユーザーが「plan-viewerでまとめて」等と明示的に指示した時
+2. **手動**: ユーザーが「Viewでまとめて」等と明示的に指示した時
 
 ## ワークフロー
 
