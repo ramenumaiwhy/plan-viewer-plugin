@@ -3,20 +3,24 @@
 import argparse
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import secrets
 import sys
 import time
+from tempfile import NamedTemporaryFile
 from collections import defaultdict
 from http import cookies
-from urllib.parse import unquote_plus
+from urllib.parse import unquote, unquote_plus, urlsplit
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 MAX_BODY = 64 * 1024  # 64 KB
 MAX_ENTRIES = 1000
 MAX_PIN_ATTEMPTS = 5  # ロックまでの試行回数
 LOCKOUT_SECONDS = 60  # ロック時間
+TAILSCALE_IPV4 = ipaddress.ip_network('100.64.0.0/10')
+TAILSCALE_IPV6 = ipaddress.ip_network('fd7a:115c:a1e0::/48')
 
 PIN_PAGE = """<!DOCTYPE html>
 <html lang="ja">
@@ -70,13 +74,9 @@ def make_handler(pin_hash, auth_token_secret):
     failed_attempts = defaultdict(list)
 
     class PlanViewerHandler(SimpleHTTPRequestHandler):
-        # シンボリックリンク経由の docroot 外アクセスを防ぐ
-        def translate_path(self, path):
-            resolved = os.path.realpath(super().translate_path(path))
-            docroot = os.path.realpath(os.getcwd())
-            if not resolved.startswith(docroot + os.sep) and resolved != docroot:
-                return docroot
-            return resolved
+        def list_directory(self, path):
+            self.send_error(404)
+            return None
 
         def end_headers(self):
             self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -100,14 +100,79 @@ def make_handler(pin_hash, auth_token_secret):
             expected = hashlib.sha256(f"{auth_token_secret}:{pin_hash}".encode()).hexdigest()
             return hmac.compare_digest(token.value, expected)
 
+        def _is_private_path(self):
+            """コメント保存ファイルとドットファイルの静的配信を拒否する。"""
+            path = unquote(urlsplit(self.path).path)
+            parts = [part for part in path.split('/') if part]
+            target = super().translate_path(self.path)
+            if os.path.realpath(target) != os.path.abspath(target):
+                return True
+            if os.path.isdir(target) and any(os.path.islink(os.path.join(target, name)) for name in ('index.html', 'index.htm')):
+                return True
+            if any(part.startswith('.') for part in parts):
+                return True
+            if parts:
+                filename = parts[-1].lower()
+                if filename == 'questions.json' or filename.startswith('questions.json.') or filename == 'questions.json~':
+                    return True
+            return bool(parts and parts[0].lower() in {'scripts', '__pycache__'})
+
+        def _is_local_request(self):
+            """localhost、認証済みTailscale Serveを許可する。"""
+            try:
+                client_ip = ipaddress.ip_address(self.client_address[0])
+            except ValueError:
+                return False
+
+            try:
+                hostname = urlsplit(f"//{self.headers.get('Host', '')}").hostname
+            except ValueError:
+                return False
+
+            forwarded_headers = ('Forwarded', 'X-Forwarded-For', 'X-Forwarded-Host', 'X-Real-IP')
+            if not client_ip.is_loopback:
+                return False
+
+            if hostname in {'localhost', '127.0.0.1', '::1'}:
+                return not any(self.headers.get(header) for header in forwarded_headers)
+
+            if self.headers.get('Tailscale-Headers-Info') != 'https://tailscale.com/s/serve-headers':
+                return False
+            if not self.headers.get('Tailscale-User-Login', '').strip():
+                return False
+            if not self.headers.get('Tailscale-User-Name', '').strip():
+                return False
+            if self.headers.get('X-Forwarded-Proto') != 'https':
+                return False
+            if self.headers.get('X-Forwarded-Host') != self.headers.get('Host'):
+                return False
+
+            try:
+                forwarded_ip = ipaddress.ip_address(self.headers.get('X-Forwarded-For', ''))
+            except ValueError:
+                return False
+            return forwarded_ip in TAILSCALE_IPV4 or forwarded_ip in TAILSCALE_IPV6
+
         def do_GET(self):
             if not self._check_auth():
                 self._serve_pin_page()
                 return
+            if self._is_private_path():
+                self.send_error(404)
+                return
             super().do_GET()
 
+        def do_HEAD(self):
+            if not self._check_auth():
+                self._serve_pin_page()
+                return
+            if self._is_private_path():
+                self.send_error(404)
+                return
+            super().do_HEAD()
+
         def do_POST(self):
-            if self.path == '/api/auth':
+            if self.path == '/api/auth' and pin_hash is not None:
                 self._handle_auth()
                 return
             if not self._check_auth():
@@ -115,6 +180,9 @@ def make_handler(pin_hash, auth_token_secret):
                 return
             if self.path != '/api/questions':
                 self.send_error(404)
+                return
+            if not self._is_local_request():
+                self.send_error(403)
                 return
             self._handle_questions()
 
@@ -124,7 +192,8 @@ def make_handler(pin_hash, auth_token_secret):
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(page)))
             self.end_headers()
-            self.wfile.write(page)
+            if self.command != 'HEAD':
+                self.wfile.write(page)
 
         def _is_locked_out(self):
             """IP 単位のレート制限。一定回数失敗したら一時ロック。"""
@@ -148,7 +217,11 @@ def make_handler(pin_hash, auth_token_secret):
                 self.send_error(400)
                 return
 
-            body = self.rfile.read(content_length).decode('utf-8')
+            try:
+                body = self.rfile.read(content_length).decode('utf-8')
+            except UnicodeDecodeError:
+                self.send_error(400)
+                return
             # フォーム送信: pin=1234
             submitted_pin = ''
             for pair in body.split('&'):
@@ -194,7 +267,7 @@ def make_handler(pin_hash, auth_token_secret):
 
             try:
                 question = json.loads(body)
-            except json.JSONDecodeError:
+            except (UnicodeDecodeError, json.JSONDecodeError):
                 self.send_error(400)
                 return
 
@@ -207,23 +280,37 @@ def make_handler(pin_hash, auth_token_secret):
                 self.send_error(400)
                 return
 
+            nofollow = getattr(os, 'O_NOFOLLOW', None)
+            if nofollow is None:
+                self.send_error(501, 'Saving questions requires os.O_NOFOLLOW on the server')
+                return
+
             questions_file = os.path.join(os.getcwd(), 'questions.json')
 
             try:
-                with open(questions_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-            except (FileNotFoundError, json.JSONDecodeError):
-                data = []
+                try:
+                    fd = os.open(questions_file, os.O_RDONLY | nofollow)
+                except FileNotFoundError:
+                    data = []
+                else:
+                    with os.fdopen(fd, encoding='utf-8') as f:
+                        data = json.load(f)
+                    if not isinstance(data, list):
+                        raise ValueError("invalid questions file")
 
-            data.append(question)
-            if len(data) > MAX_ENTRIES:
-                data = data[-MAX_ENTRIES:]
-
-            # アトミック書き込み: クラッシュ時のデータ破損を防ぐ
-            tmp_path = questions_file + '.tmp'
-            with open(tmp_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            os.replace(tmp_path, questions_file)
+                data.append(question)
+                tmp = NamedTemporaryFile(mode='w', encoding='utf-8', dir='.',
+                                         prefix='.questions-', delete=False)
+                try:
+                    with tmp:
+                        json.dump(data[-MAX_ENTRIES:], tmp, ensure_ascii=False, indent=2)
+                    os.replace(tmp.name, questions_file)
+                finally:
+                    if os.path.lexists(tmp.name):
+                        os.unlink(tmp.name)
+            except (OSError, ValueError):
+                self.send_error(500, 'Cannot save questions')
+                return
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

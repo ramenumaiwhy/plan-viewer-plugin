@@ -6,16 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/plan-html-gate.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "If the file_path ends with .html and is inside a plan-viewer output directory (typically ~/plan-viewer/ or the value of PLAN_VIEWER_DIR, excluding index.html and glossary.html): (1) Have you Read SKILL.md, page-template.md, and writing-guide.md in this session BEFORE writing? Memory-based reproduction causes partial omissions of templates and writing rules (confirmed 2026-02-28). If not Read, cancel this Write, Read these files first, then rewrite. (2) Does the HTML contain FAB button group (.fab-group), annotation UI (banner, overlay, popover, toast), and all JavaScript? These are essential for mobile question feedback — without them users cannot ask questions about content. If missing, cancel and rewrite with the complete template."
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/plan_preview.py\" || exit 2"
           }
         ]
       }
