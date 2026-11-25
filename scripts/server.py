@@ -9,6 +9,7 @@ import os
 import secrets
 import sys
 import time
+from datetime import datetime, timezone
 from tempfile import NamedTemporaryFile
 from collections import defaultdict
 from http import cookies
@@ -68,6 +69,69 @@ document.getElementById('pin').focus();
 </html>"""
 
 
+QUESTIONS_FILE = 'questions.json'
+VIEWS_FILE = 'views.json'
+
+
+def _nofollow():
+    return getattr(os, 'O_NOFOLLOW', None)
+
+
+def _in_tailnet(ip):
+    return ip in TAILSCALE_IPV4 or ip in TAILSCALE_IPV6
+
+
+def _now():
+    return datetime.now().astimezone().isoformat(timespec='seconds')
+
+
+def _parse_time(value):
+    """changed_at を比べられる時刻にする。無いものは一番古い扱い。"""
+    if not value:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    parsed = datetime.fromisoformat(value)
+    return parsed if parsed.tzinfo else parsed.astimezone()
+
+
+def _read_json_file(name, default):
+    """作業ディレクトリの JSON を読む。シンボリックリンクは開かない。"""
+    try:
+        fd = os.open(name, os.O_RDONLY | (_nofollow() or 0))
+    except FileNotFoundError:
+        return default
+    with os.fdopen(fd, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def _write_json_file(name, data):
+    """一時ファイルに書いてから入れ替える。書き込み中に読まれても壊れない。"""
+    tmp = NamedTemporaryFile(mode='w', encoding='utf-8', dir='.', prefix=f'.{name}-', delete=False)
+    try:
+        with tmp:
+            json.dump(data, tmp, ensure_ascii=False, indent=2)
+        os.replace(tmp.name, name)
+    finally:
+        if os.path.lexists(tmp.name):
+            os.unlink(tmp.name)
+
+
+def _load_views():
+    data = _read_json_file(VIEWS_FILE, {'revision': 0, 'views': []})
+    if not isinstance(data, dict) or not isinstance(data.get('views'), list) or not isinstance(data.get('revision'), int):
+        raise ValueError('invalid views file')
+    return data
+
+
+def _save_views(data):
+    if _nofollow() is None:
+        raise OSError('views require os.O_NOFOLLOW')
+    _write_json_file(VIEWS_FILE, data)
+
+
+def _find_view(data, page):
+    return next((view for view in data['views'] if view.get('page') == page), None)
+
+
 def make_handler(pin_hash, auth_token_secret):
     """PIN 認証付きハンドラを生成する。pin_hash が None なら認証なし。"""
     # IP 単位の試行回数トラッキング
@@ -113,28 +177,52 @@ def make_handler(pin_hash, auth_token_secret):
                 return True
             if parts:
                 filename = parts[-1].lower()
-                if filename == 'questions.json' or filename.startswith('questions.json.') or filename == 'questions.json~':
-                    return True
+                for private in (QUESTIONS_FILE, VIEWS_FILE):
+                    if filename == private or filename.startswith(private + '.') or filename == private + '~':
+                        return True
             return bool(parts and parts[0].lower() in {'scripts', '__pycache__'})
 
-        def _is_local_request(self):
-            """localhost、認証済みTailscale Serveを許可する。"""
+        def _client_and_host(self):
             try:
                 client_ip = ipaddress.ip_address(self.client_address[0])
-            except ValueError:
-                return False
-
-            try:
                 hostname = urlsplit(f"//{self.headers.get('Host', '')}").hostname
             except ValueError:
-                return False
+                return None, None
+            return client_ip, hostname
 
+        def _is_mac_itself(self):
+            """Mac 自身から localhost 宛てに直接来た要求だけを許可する。"""
+            client_ip, hostname = self._client_and_host()
+            if client_ip is None or not client_ip.is_loopback:
+                return False
+            if hostname not in {'localhost', '127.0.0.1', '::1'}:
+                return False
             forwarded_headers = ('Forwarded', 'X-Forwarded-For', 'X-Forwarded-Host', 'X-Real-IP')
-            if not client_ip.is_loopback:
-                return False
+            return not any(self.headers.get(header) for header in forwarded_headers)
 
+        def _is_tailnet_direct(self):
+            """Tailscale のアドレスから、Tailscale の IP か ts.net 名で直接開かれた要求を許可する。"""
+            client_ip, hostname = self._client_and_host()
+            if client_ip is None or not _in_tailnet(client_ip) or not hostname:
+                return False
+            if hostname.endswith('.ts.net'):
+                return True
+            try:
+                return _in_tailnet(ipaddress.ip_address(hostname))
+            except ValueError:
+                return False  # 別名の Host は DNS rebinding の恐れがあるので拒否する
+
+        def _can_write(self):
+            """書き込みを許す相手: Mac 自身、Tailscale のアドレス、認証済み Tailscale Serve。"""
+            return self._is_mac_itself() or self._is_tailnet_direct() or self._is_tailscale_serve()
+
+        def _is_tailscale_serve(self):
+            """認証済み Tailscale Serve 経由（Mac 自身へのプロキシ）を許可する。"""
+            client_ip, hostname = self._client_and_host()
+            if client_ip is None or not client_ip.is_loopback:
+                return False
             if hostname in {'localhost', '127.0.0.1', '::1'}:
-                return not any(self.headers.get(header) for header in forwarded_headers)
+                return False
 
             if self.headers.get('Tailscale-Headers-Info') != 'https://tailscale.com/s/serve-headers':
                 return False
@@ -151,11 +239,17 @@ def make_handler(pin_hash, auth_token_secret):
                 forwarded_ip = ipaddress.ip_address(self.headers.get('X-Forwarded-For', ''))
             except ValueError:
                 return False
-            return forwarded_ip in TAILSCALE_IPV4 or forwarded_ip in TAILSCALE_IPV6
+            return _in_tailnet(forwarded_ip)
 
         def do_GET(self):
             if not self._check_auth():
                 self._serve_pin_page()
+                return
+            if urlsplit(self.path).path == '/api/views':
+                try:
+                    self._send_json(200, _load_views())
+                except (OSError, ValueError):
+                    self.send_error(500, 'Cannot read views')
                 return
             if self._is_private_path():
                 self.send_error(404)
@@ -178,13 +272,129 @@ def make_handler(pin_hash, auth_token_secret):
             if not self._check_auth():
                 self.send_error(403)
                 return
-            if self.path != '/api/questions':
+            path = urlsplit(self.path).path
+            if path == '/api/questions':
+                handle, allowed = self._handle_questions, self._can_write()
+            elif path == '/api/views':
+                handle, allowed = self._handle_register_view, self._is_mac_itself()
+            elif path.startswith('/api/views/'):
+                page = unquote(path[len('/api/views/'):])
+                handle, allowed = (lambda: self._handle_update_view(page)), self._can_write()
+            else:
                 self.send_error(404)
                 return
-            if not self._is_local_request():
+            if not allowed:
                 self.send_error(403)
                 return
-            self._handle_questions()
+            handle()
+
+        def _send_json(self, status, payload):
+            body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+            self.send_response(status)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _read_json_object(self):
+            """JSON の本文を dict で返す。だめなら応答を送って None を返す。"""
+            if 'application/json' not in self.headers.get('Content-Type', ''):
+                self.send_error(415)
+                return None
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+            except ValueError:
+                self.send_error(400)
+                return None
+            if content_length <= 0 or content_length > MAX_BODY:
+                self.send_error(413)
+                return None
+            try:
+                payload = json.loads(self.rfile.read(content_length))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                self.send_error(400)
+                return None
+            if not isinstance(payload, dict):
+                self.send_error(400)
+                return None
+            return payload
+
+        def _handle_register_view(self):
+            """公開スクリプトからの記事登録。同じ page なら中身を更新し、印は残す。"""
+            payload = self._read_json_object()
+            if payload is None:
+                return
+            fields = {k: payload.get(k) for k in ('page', 'title', 'project', 'icon', 'updated_at')}
+            if not all(isinstance(fields[k], str) and fields[k].strip() for k in ('page', 'title', 'project')):
+                self.send_error(400, 'page, title, project are required')
+                return
+            if any(v is not None and not isinstance(v, str) for v in fields.values()):
+                self.send_error(400)
+                return
+            now = _now()
+            try:
+                data = _load_views()
+                view = _find_view(data, fields['page'])
+                created = view is None
+                if created:
+                    view = {'page': fields['page'], 'pinned': False, 'archived': False}
+                    data['views'].append(view)
+                view.update({
+                    'title': fields['title'].strip(),
+                    'project': fields['project'].strip(),
+                    'icon': fields['icon'] or view.get('icon') or 'file-text',
+                    'updated_at': fields['updated_at'] or now,
+                    'changed_at': now,
+                })
+                data['revision'] += 1
+                _save_views(data)
+            except (OSError, ValueError):
+                self.send_error(500, 'Cannot save views')
+                return
+            self._send_json(201 if created else 200, {'revision': data['revision'], 'view': view})
+
+        def _handle_update_view(self, page):
+            """ピン留め・アーカイブ・プロジェクト名の変更。Mac 側が新しければ 409 で今の値を返す。"""
+            patch = self._read_json_object()
+            if patch is None:
+                return
+            seen = patch.get('changed_at')
+            changes = {k: patch[k] for k in ('pinned', 'archived', 'project') if k in patch}
+            if (not changes
+                    or any(not isinstance(changes[k], bool) for k in ('pinned', 'archived') if k in changes)
+                    or ('project' in changes and not isinstance(changes['project'], str))
+                    or (seen is not None and not isinstance(seen, str))
+                    or (changes.get('pinned') and changes.get('archived'))):
+                self.send_error(400)
+                return
+            try:
+                seen_time = _parse_time(seen)
+            except ValueError:
+                self.send_error(400, 'changed_at must be ISO 8601')
+                return
+            try:
+                data = _load_views()
+                view = _find_view(data, page)
+                if view is None:
+                    self.send_error(404)
+                    return
+                if seen is not None and _parse_time(view.get('changed_at')) > seen_time:
+                    self._send_json(409, {'revision': data['revision'], 'view': view})
+                    return
+                if 'project' in changes:
+                    changes['project'] = changes['project'].strip()
+                view.update(changes)
+                if changes.get('pinned'):
+                    view['archived'] = False
+                if view.get('archived'):
+                    view['pinned'] = False
+                view['changed_at'] = _now()
+                data['revision'] += 1
+                _save_views(data)
+            except (OSError, ValueError):
+                self.send_error(500, 'Cannot save views')
+                return
+            self._send_json(200, {'revision': data['revision'], 'view': view})
 
         def _serve_pin_page(self, error=False):
             page = PIN_PAGE.encode('utf-8')
@@ -248,74 +458,27 @@ def make_handler(pin_hash, auth_token_secret):
             self.end_headers()
 
         def _handle_questions(self):
-            content_type = self.headers.get('Content-Type', '')
-            if 'application/json' not in content_type:
-                self.send_error(415)
-                return
-
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-            except ValueError:
-                self.send_error(400)
-                return
-
-            if content_length <= 0 or content_length > MAX_BODY:
-                self.send_error(413)
-                return
-
-            body = self.rfile.read(content_length)
-
-            try:
-                question = json.loads(body)
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                self.send_error(400)
-                return
-
-            if not isinstance(question, dict):
-                self.send_error(400)
+            question = self._read_json_object()
+            if question is None:
                 return
             allowed_keys = {'page', 'selectedText', 'comment', 'timestamp'}
             question = {k: v for k, v in question.items() if k in allowed_keys and isinstance(v, str)}
             if not question.get('selectedText'):
                 self.send_error(400)
                 return
-
-            nofollow = getattr(os, 'O_NOFOLLOW', None)
-            if nofollow is None:
+            if _nofollow() is None:
                 self.send_error(501, 'Saving questions requires os.O_NOFOLLOW on the server')
                 return
-
-            questions_file = os.path.join(os.getcwd(), 'questions.json')
-
             try:
-                try:
-                    fd = os.open(questions_file, os.O_RDONLY | nofollow)
-                except FileNotFoundError:
-                    data = []
-                else:
-                    with os.fdopen(fd, encoding='utf-8') as f:
-                        data = json.load(f)
-                    if not isinstance(data, list):
-                        raise ValueError("invalid questions file")
-
+                data = _read_json_file(QUESTIONS_FILE, [])
+                if not isinstance(data, list):
+                    raise ValueError("invalid questions file")
                 data.append(question)
-                tmp = NamedTemporaryFile(mode='w', encoding='utf-8', dir='.',
-                                         prefix='.questions-', delete=False)
-                try:
-                    with tmp:
-                        json.dump(data[-MAX_ENTRIES:], tmp, ensure_ascii=False, indent=2)
-                    os.replace(tmp.name, questions_file)
-                finally:
-                    if os.path.lexists(tmp.name):
-                        os.unlink(tmp.name)
+                _write_json_file(QUESTIONS_FILE, data[-MAX_ENTRIES:])
             except (OSError, ValueError):
                 self.send_error(500, 'Cannot save questions')
                 return
-
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'status': 'ok'}).encode())
+            self._send_json(200, {'status': 'ok'})
 
     return PlanViewerHandler
 
